@@ -1,0 +1,9 @@
+{
+    "name": "FormData.polyfill.js",
+    "version": "1.0",
+    "main": "FormData.polyfill.js",
+    "ignore": [
+        "tests",
+        "src"
+    ]
+}

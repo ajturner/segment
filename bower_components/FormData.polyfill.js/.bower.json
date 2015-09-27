@@ -1,0 +1,19 @@
+{
+  "name": "FormData.polyfill.js",
+  "main": "FormData.polyfill.js",
+  "ignore": [
+    "tests",
+    "src"
+  ],
+  "homepage": "https://github.com/saschame/FormData.polyfill.js",
+  "_release": "7d76a2eb87",
+  "_resolution": {
+    "type": "branch",
+    "branch": "master",
+    "commit": "7d76a2eb874f029089bf1addcb9502474c0e8908"
+  },
+  "_source": "git@github.com:saschame/FormData.polyfill.js.git",
+  "_target": "*",
+  "_originalSource": "git@github.com:saschame/FormData.polyfill.js.git",
+  "_direct": true
+}
