@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Segment: version control for ArcGIS</title>
+	<script type="text/javascript">
+		this.fetch = null;
+		this.FormData = null;
+	</script>
+	<script type="text/javascript" src="bower_components/fetch/fetch.js"></script>
+	<script type="text/javascript" src="bower_components/FormData.polyfill.js/FormData.polyfill.js"></script>
+	<script type="text/javascript" src="dist/index.js"></script>
+	<style type="text/css">
+	#versions li {
+		color: #000099;
+		text-decoration: underline;
+		cursor: pointer;
+	}
+	</style>
+</head>
+<body>
+<ul id="inputs">
+	<li><input type="text" id="username" placeholder="AGO Username"></input></li>
+	<li><input type="text" id="token" placeholder="AGO Token"></input></li>
+	<li><div id="status">Initializing</div></li>
+	<li id="service"></li>
+	<li id="layers"></li>
+</ul>
+
+<h3>Controls</h3>
+<ul id="controls"></ul>
+
+<h3>Versions</h3>
+<ul id="versions"></ul>
+<input id="versionQuery" type="text" placeholder="version"></input>
+<a href="#" id="versionQueryAction">Compare</a>
+
+<h3>Comparison</h3>
+<ul id="compare"></ul>
+</body>
+</html>
