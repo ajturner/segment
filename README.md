@@ -1,6 +1,8 @@
-## Collaborative GIS Editing
+## Versioning for ArcGIS
 
+Technology demonstration for using ArcGIS versioned databases.
 
+Major WIP
 
 ```
 Title: ArcGIS Collaboration
@@ -13,4 +15,5 @@ Source-->>Subscriber: Webhook
 ```
 
 ![diagram](diagram.svg)
+
 
