@@ -1,3 +1,5 @@
+import 'isomorphic-fetch';
+
 export default class Portal {
 	constructor(options) {
 		this.arcgis = options.portal !== undefined ? options.portal : 'https://www.arcgis.com/sharing/rest';
@@ -13,17 +15,21 @@ export default class Portal {
 	  return str.join("&");
 	}
 
-	get(requestUrl, requestParams = {}) {
+	get(requestUrl, requestParams = {}, merge = true) {
 		var self = this;
- 		return fetch( `${requestUrl}?f=json&token=${self.token}&${Portal.serialize(requestParams)}`, {
+ 		return fetch( `${requestUrl}?f=json&token=${this.token}&${Portal.serialize(requestParams)}`, {
 			  method: 'get',
 			  headers: {}
 		}).then(function(response) {
 			return response.json();
 		}).then(function(body) {
-			Object.assign(self, body);
+			var returnValue = body;
+			if(merge) {
+				Object.assign(self, body);
+				returnValue = self;
+			}
 			return new Promise(function(resolve, reject) {
-		        resolve(self)
+		        resolve(returnValue)
 		    })
 		}).catch(function(error) {
 			console.log('request failed', error)
@@ -32,7 +38,7 @@ export default class Portal {
 
 	post(requestUrl, requestBody) {
 		var self = this;
- 		return fetch( `${requestUrl}?f=json&token=${self.token}`, {
+ 		return fetch( `${requestUrl}?f=json&token=${this.token}`, {
 			  method: 'post',
 			  headers: {
 			    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'

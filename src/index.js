@@ -2,6 +2,12 @@ export var VERSION = '0.1.0';
 import { Portal, Service, Layer } from './arcgis';
 import User from './user';
 
+// module.exports = {
+//   User: User,
+//   Portal: Portal,
+//   Service: Service,
+//   Layer: Layer
+// }
 var fields = [
   { "name" : "ObjectID", 
     "type" : "esriFieldTypeInteger", 
@@ -28,6 +34,7 @@ var fields = [
 ]
 
 function createLayer(_service) {
+  console.log("Create Layer - Service:", _service);
   return layer.create({service: _service, definition: {name: "VersionLayer", fields: fields}});
 }
 
@@ -39,7 +46,11 @@ function createReplica(_layer) {
   return _layer.createReplica();
 }
 
-function addFeatures() {
+// For demo purposes.
+function addFeaturesSync() { 
+  return addFeatures(true);
+};
+function addFeatures(sync = false) {
   var feature = {
     "attributes": {
       "Miles": Math.floor(Math.random() * 10000),
@@ -53,18 +64,19 @@ function addFeatures() {
     updates: [],
     deletes: []
   }
-  layer.applyEdits(mods);
+  layer.applyEdits(mods).then(function() { if(sync == true) {syncLayer()} });
   return false;
 }
 
 function syncLayer() {
-  layer.sync().then(function(u) {
-    addVersion(layer);
+  service.sync().then(function(u) {
+    console.log("syncLayer", u)
+    showVersion(layer);
   });
   return false;
 }
 
-function addVersion(_layer, sourceVersion = null, logger = "versions") {
+function showVersion(_layer, sourceVersion = null, logger = "versions") {
   var newDiv = document.createElement("li");
   var mods = _layer.changeStatistics;
 
@@ -72,14 +84,14 @@ function addVersion(_layer, sourceVersion = null, logger = "versions") {
   if(sourceVersion !== null) {
     versionCompare.push(sourceVersion);
   }
-  versionCompare.push(_layer.currentVersion);
+  versionCompare.push(_layer.version);
   newDiv.innerHTML = `${versionCompare.join(" -> ")} | ${mods.adds} added | ${mods.updates} updated | ${mods.deletes} deleted`;
 
-  newDiv.dataset.version = _layer.currentVersion;
+  newDiv.dataset.version = _layer.version;
   newDiv.onclick = getVersion;
 
   var currentDiv = document.getElementById(logger); 
-  currentDiv.appendChild(newDiv);  
+  currentDiv.insertBefore(newDiv, currentDiv.firstChild);
 }   
 function getVersion(request, logger = "compare") {
   var version = request;
@@ -87,7 +99,7 @@ function getVersion(request, logger = "compare") {
     version = event.target.dataset.version;
   }
   return layer.sync({version: version}).then(function(u) {
-    addVersion(layer, version, logger);
+    showVersion(layer, version, logger);
   });
 }
 
@@ -135,6 +147,7 @@ function controlService() {
     .then(function() { setStatus("Layer Created"); })
     .then(function() { 
       var newLinks = [
+        {id: "addFeature", text: "Add Features (Sync Update)", onclick: addFeaturesSync },
         {id: "addFeature", text: "Add Features", onclick: addFeatures },
         {id: "getUpdates", text: "Get Updates", onclick: syncLayer }
       ];

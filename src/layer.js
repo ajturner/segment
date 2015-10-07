@@ -1,21 +1,44 @@
 import Portal from './portal';
+import Service from './service';
 
 export default class Layer extends Portal {
-	constructor(options) {
+	constructor(options = {}) {
 		super(options)
 		this.definition = {};
 	  	// Override the defaults
 	  	Object.assign(this.definition, options.definition ? options.definition : {layers: []});
 	}
 
+	// This can probably be less cally
 	find(options) {
-		return this.get(options.url)
+		var self = this;
+		this.encodedLayerURL = options.url;
+		return this.get(options.url).then(this.fetchService);
+	}
+
+	// Are Replicas returned per layer index?
+	get edits() {
+		return this.service.edits[this.index];
+	}
+
+	// If we Layer.find() then we need to get the service metadata
+	fetchService(_layer) {
+		var self = _layer;
+		var service = new Service({portal: self.portal, token: self.token});
+		return service.fetch(self.serviceUrl)
+					.then(function(s) { 
+						self.service = s;
+						return new Promise(function(resolve, reject) {
+							resolve(self);
+						});
+					});			
 	}
 
 	create(options = {} ) {
 		if(options.service !== undefined){
 			this.service = options.service;
 		}
+		let layers = {};
 		Object.assign(layers, this.defaultDefinition.layers[0], options.definition);
 		this.definition.layers[0] = layers;
 		var requestUrl = `${this.service.adminUrl}/addToDefinition`;
@@ -23,6 +46,10 @@ export default class Layer extends Portal {
 
 		return this.post(requestUrl, requestBody);
 	}	
+
+	get serviceUrl() {
+		return this.encodedLayerURL.replace(/\/[\d]+$/, "");
+	}
 
 	get defaultDefinition() {
 	 	return {
@@ -75,10 +102,10 @@ export default class Layer extends Portal {
 	  ]};		
 	}
 	get index() {
-		return this.layers.length-1;
+		return this.id || this.layers.length-1;
 	}
 	get url() {
-		return `${this.service.encodedServiceURL}/${this.index}`
+		return `${this.service.url}/${this.index}`
 	}
 	get extent() {
 		return [-104,35.6,-94.32,41];
@@ -87,38 +114,7 @@ export default class Layer extends Portal {
 	// http://resources.arcgis.com/en/help/arcgis-rest-api/index.html#/Sync_workflow_examples/02r3000000rw000000/
 	// Create Replica	
 	createReplica() {
-		var requestBody = {
-			"geometry": JSON.stringify({"xmin": -179, "ymin": -80, "xmax": 179, "ymax": 80}),
-		    "geometryType": "esriGeometryEnvelope", 
-		    "inSR": 4326,
-		    "layers": this.index,
-		    "replicaName": "segment",
-		    "returnAttachments": true,
-		    "returnAttachmentsDataByUrl": true,
-		    "transportType": "esriTransportTypeEmbedded",
-		    "async": false,
-		    "syncModel": "perReplica",
-		    "dataFormat": "json",
-		    "f": "json"}
-		var requestUrl = this.service.url + "/createReplica";
-		return this.post(requestUrl, requestBody);
-	}
-
-	sync(options = {}) {
-		var requestBody = {
-			"replicaID": `{${this.replicaID}}`,
-		    "replicaServerGen": options.version !== undefined ? options.version : this.replicaServerGen, 
-		    "transportType": "esriTransportTypeEmbedded",
-		    "closeReplica": false,
-		    "returnIdsForAdds": false,
-		    "returnAttachmentsDataByUrl": true,
-		    "syncDirection": "download",
-		    "async": false,
-		    "dataFormat": "json",
-		    "f": "json"
-		}
-		var requestUrl = this.service.url + "/synchronizeReplica";
-		return this.post(requestUrl, requestBody);
+		return this.service.createReplica();
 	}
 
 	// http://resources.arcgis.com/en/help/arcgis-rest-api/index.html#/Apply_Edits_Feature_Service_Layer/02r3000000r6000000/
@@ -128,19 +124,25 @@ export default class Layer extends Portal {
 		return this.post(requestUrl, requestBody);		
 	}
 
-	get currentVersion() {
-		return this.replicaServerGen;
+	get version() {
+		return this.service.version;
 	}
 
 	// Get the Changelog statistics
 	get changeStatistics() {
-		var changes = this.edits.length;
 		var mods = {adds: 0, updates: 0, deletes: 0};
-		for(let rev in this.edits) {
-			mods.adds     += this.edits[rev].features.adds.length;
-			mods.updates  += this.edits[rev].features.updates.length;
-			mods.deletes  += this.edits[rev].features.deleteIds.length;
+		if(this.edits) {		
+			var changes = this.edits.features;
+			mods.adds     += changes.adds.length;
+			mods.updates  += changes.updates.length;
+			mods.deletes  += changes.deleteIds.length;
 		}
 		return mods;
 	}
+
+	// Proxy to Service#sync
+	sync(options = {}) {
+		return this.service.sync(options);
+	}
+
 }

@@ -2,9 +2,12 @@ import Portal from './portal';
 import Layer from './layer';
 
 export default class Service extends Portal {
-	constructor(options) {
+	constructor(options = {}) {
 		super(options);
-		this.definition = {
+  	}
+
+  	static defaultDefinition() {
+		return {
 		   "name" : "",
 		   "serviceDescription" : "",
 		   "hasStaticData" : false,
@@ -30,6 +33,17 @@ export default class Service extends Portal {
 		      "xssInputRule" : "rejectInvalid"
 		      }
 		};
+
+  	}
+
+  	fetch(_url = null) {
+  		if(_url === null) {
+  			_url = this.url;
+  		} else {
+			this.encodedServiceURL = _url;
+  		}
+  		
+  		return this.get(this.url, {});
   	}
 
   	get url() {
@@ -40,8 +54,10 @@ export default class Service extends Portal {
   		return this.url.replace("rest/services", "rest/admin/services");
   	}
 
+  	// TODO: merge options and default definition
 	create(options = {}) {		
 		this.user = options.user; // TODO: add error handling if user is not valid.
+		this.definition = Service.defaultDefinition();
 		this.definition.name = options.name ? options.name : `EmptyServiceName${Math.random(1000)}`; // sorry! @ajturner
 
 
@@ -51,5 +67,75 @@ export default class Service extends Portal {
 			    outputType: 'featureService'
 			  }
 		return this.post(requestUrl, requestBody);
-	}  	
+	} 
+
+	fetchReplicas() {
+		var self = this;
+		var _replicas = [];
+		var requestUrl = `${this.url}/replicas`;
+		return this.get(requestUrl, {}, false).then(function(_replicaList) {
+			var promisedReplicas = _replicaList.map(self.replica.bind(self))
+			return Promise.all(promisedReplicas).then(function(replicaResponses) {
+				return new Promise(function(resolve, reject) {
+					self.replicas = replicaResponses;
+			        resolve(self);
+			    })
+			});
+		});
+	}
+
+	replica(_replica) {
+		var requestUrl = `${this.url}/replicas/${_replica.replicaID}`;
+		return this.get(requestUrl, {}, false);
+	}
+	get version() {
+		let version = 0;
+		if(this.replicas !== undefined && this.replicas.length > 0) {
+			version = this.replicas[0].replicaServerGen;
+		} else if(this.replicaServerGen !== undefined) {
+			version = this.replicaServerGen;
+		}
+		return version;
+	}
+	// http://resources.arcgis.com/en/help/arcgis-rest-api/index.html#/Sync_workflow_examples/02r3000000rw000000/
+	// Create Replica	
+	createReplica() {
+		return this.fetch().then(function(_service) {
+			console.log("createReplica", _service);
+			console.log("layers", _service.layers.map(i => i.id).join(","));
+			var requestBody = {
+				"geometry": JSON.stringify({"xmin": -179, "ymin": -80, "xmax": 179, "ymax": 80}),
+			    "geometryType": "esriGeometryEnvelope", 
+			    "inSR": 4326,
+			    "layers": _service.layers.map(i => i.id).join(","),
+			    "replicaName": "segment",
+			    "returnAttachments": true,
+			    "returnAttachmentsDataByUrl": true,
+			    "transportType": "esriTransportTypeEmbedded",
+			    "async": false,
+			    "syncModel": "perReplica",
+			    "dataFormat": "json",
+			    "f": "json"}
+			var requestUrl = _service.url + "/createReplica";
+			return _service.post(requestUrl, requestBody);
+		})
+
+	}
+
+	sync(options = {}) {
+		var requestBody = {
+			"replicaID": `{${this.replicaID}}`,
+		    "replicaServerGen": options.version !== undefined ? options.version : this.version, 
+		    "transportType": "esriTransportTypeEmbedded",
+		    "closeReplica": false,
+		    "returnIdsForAdds": false,
+		    "returnAttachmentsDataByUrl": true,
+		    "syncDirection": "download",
+		    "async": false,
+		    "dataFormat": "json",
+		    "f": "json"
+		}
+		var requestUrl = this.url + "/synchronizeReplica";
+		return this.post(requestUrl, requestBody);
+	}
 }

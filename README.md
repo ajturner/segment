@@ -17,3 +17,22 @@ Source-->>Subscriber: Webhook
 ![diagram](diagram.svg)
 
 
+## Develop
+
+```bash
+node run compile
+node test.js
+```
+
+```
+npm link
+```
+
+in app:
+
+```
+npm link segment
+gulp watch
+```
+
+http://localhost:8000
