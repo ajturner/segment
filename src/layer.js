@@ -40,6 +40,7 @@ export default class Layer extends Portal {
 		}
 		let layers = {};
 		Object.assign(layers, this.defaultDefinition.layers[0], options.definition);
+		Object.assign(this, layers)
 		this.definition.layers[0] = layers;
 		var requestUrl = `${this.service.adminUrl}/addToDefinition`;
 		var requestBody = {addToDefinition: JSON.stringify(this.definition)};
@@ -102,19 +103,22 @@ export default class Layer extends Portal {
 	  ]};		
 	}
 	get index() {
-		return this.id || this.layers.length-1;
+		var self = this;
+		return this.id || this.layers.filter(function(e) { return e.name == self.name } )[0].id;
 	}
 	get url() {
 		return `${this.service.url}/${this.index}`
 	}
 	get extent() {
-		return [-104,35.6,-94.32,41];
+		return [-180,-79,180,79];
 	}
 
 	// http://resources.arcgis.com/en/help/arcgis-rest-api/index.html#/Sync_workflow_examples/02r3000000rw000000/
 	// Create Replica	
 	createReplica() {
-		return this.service.createReplica();
+		var self = this;
+		// we get back a Service and need to return back this layer
+		return this.service.createReplica(this.index).then(u => new Promise((resolve, reject) => resolve(self) ));
 	}
 
 	// http://resources.arcgis.com/en/help/arcgis-rest-api/index.html#/Apply_Edits_Feature_Service_Layer/02r3000000r6000000/

@@ -99,16 +99,19 @@ export default class Service extends Portal {
 	}
 	// http://resources.arcgis.com/en/help/arcgis-rest-api/index.html#/Sync_workflow_examples/02r3000000rw000000/
 	// Create Replica	
-	createReplica() {
+	createReplica(layers = null) {
 		return this.fetch().then(function(_service) {
-			console.log("createReplica", _service);
-			console.log("layers", _service.layers.map(i => i.id).join(","));
+			if(layers === null) {
+				layers = _service.layers.map(i => i.id)
+			} else if (!Array.isArray(layers)) {
+				layers = [layers];
+			}			
 			var requestBody = {
 				"geometry": JSON.stringify({"xmin": -179, "ymin": -80, "xmax": 179, "ymax": 80}),
 			    "geometryType": "esriGeometryEnvelope", 
 			    "inSR": 4326,
-			    "layers": _service.layers.map(i => i.id).join(","),
-			    "replicaName": "segment",
+			    "layers": layers.join(','),
+			    "replicaName": "segment" + layers.join(''),
 			    "returnAttachments": true,
 			    "returnAttachmentsDataByUrl": true,
 			    "transportType": "esriTransportTypeEmbedded",

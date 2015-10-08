@@ -388,7 +388,7 @@ var _user2 = _interopRequireDefault(_user);
 var VERSION = '0.1.0';
 exports.VERSION = VERSION;
 var fields = [{ "name": "ObjectID",
-  "type": "esriFieldTypeInteger",
+  "type": "esriFieldTypeOID",
   "alias": "ObjectID",
   "sqlType": "sqlTypeInteger",
   "nullable": false,
@@ -408,7 +408,7 @@ var fields = [{ "name": "ObjectID",
 }];
 
 function createLayer(_service) {
-  console.log("Create Layer - Service:", _service);
+  // console.log("Create Layer - Service:", _service);
   return layer.create({ service: _service, definition: { name: "VersionLayer", fields: fields } });
 }
 
@@ -450,7 +450,7 @@ function addFeatures() {
 
 function syncLayer() {
   service.sync().then(function (u) {
-    console.log("syncLayer", u);
+    // console.log("syncLayer", u)
     showVersion(layer);
   });
   return false;
@@ -609,6 +609,7 @@ var Layer = (function (_Portal) {
 		}
 		var layers = {};
 		Object.assign(layers, this.defaultDefinition.layers[0], options.definition);
+		Object.assign(this, layers);
 		this.definition.layers[0] = layers;
 		var requestUrl = this.service.adminUrl + '/addToDefinition';
 		var requestBody = { addToDefinition: JSON.stringify(this.definition) };
@@ -620,7 +621,13 @@ var Layer = (function (_Portal) {
 	// Create Replica	
 
 	Layer.prototype.createReplica = function createReplica() {
-		return this.service.createReplica();
+		var self = this;
+		// we get back a Service and need to return back this layer
+		return this.service.createReplica(this.index).then(function (u) {
+			return new Promise(function (resolve, reject) {
+				return resolve(self);
+			});
+		});
 	};
 
 	// http://resources.arcgis.com/en/help/arcgis-rest-api/index.html#/Apply_Edits_Feature_Service_Layer/02r3000000r6000000/
@@ -701,7 +708,10 @@ var Layer = (function (_Portal) {
 	}, {
 		key: 'index',
 		get: function get() {
-			return this.id || this.layers.length - 1;
+			var self = this;
+			return this.id || this.layers.filter(function (e) {
+				return e.name == self.name;
+			})[0].id;
 		}
 	}, {
 		key: 'url',
@@ -711,7 +721,7 @@ var Layer = (function (_Portal) {
 	}, {
 		key: 'extent',
 		get: function get() {
-			return [-104, 35.6, -94.32, 41];
+			return [-180, -79, 180, 79];
 		}
 	}, {
 		key: 'version',
@@ -929,19 +939,22 @@ var Service = (function (_Portal) {
 	// Create Replica	
 
 	Service.prototype.createReplica = function createReplica() {
+		var layers = arguments.length <= 0 || arguments[0] === undefined ? null : arguments[0];
+
 		return this.fetch().then(function (_service) {
-			console.log("createReplica", _service);
-			console.log("layers", _service.layers.map(function (i) {
-				return i.id;
-			}).join(","));
+			if (layers === null) {
+				layers = _service.layers.map(function (i) {
+					return i.id;
+				});
+			} else if (!Array.isArray(layers)) {
+				layers = [layers];
+			}
 			var requestBody = {
 				"geometry": JSON.stringify({ "xmin": -179, "ymin": -80, "xmax": 179, "ymax": 80 }),
 				"geometryType": "esriGeometryEnvelope",
 				"inSR": 4326,
-				"layers": _service.layers.map(function (i) {
-					return i.id;
-				}).join(","),
-				"replicaName": "segment",
+				"layers": layers.join(','),
+				"replicaName": "segment" + layers.join(''),
 				"returnAttachments": true,
 				"returnAttachmentsDataByUrl": true,
 				"transportType": "esriTransportTypeEmbedded",

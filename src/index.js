@@ -10,7 +10,7 @@ import User from './user';
 // }
 var fields = [
   { "name" : "ObjectID", 
-    "type" : "esriFieldTypeInteger", 
+    "type" : "esriFieldTypeOID", 
     "alias" : "ObjectID", 
     "sqlType" : "sqlTypeInteger", 
     "nullable" : false, 
@@ -34,7 +34,7 @@ var fields = [
 ]
 
 function createLayer(_service) {
-  console.log("Create Layer - Service:", _service);
+  // console.log("Create Layer - Service:", _service);
   return layer.create({service: _service, definition: {name: "VersionLayer", fields: fields}});
 }
 
@@ -70,7 +70,7 @@ function addFeatures(sync = false) {
 
 function syncLayer() {
   service.sync().then(function(u) {
-    console.log("syncLayer", u)
+    // console.log("syncLayer", u)
     showVersion(layer);
   });
   return false;
